@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional AI CV</title>
+    
+    <!-- مكتبات تحويل HTML إلى PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- الخطوط: Inter للانجليزي، Cairo للعربي -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ============== 1. الألوان والتصميم الأساسي ============== */
+        :root {
+            /* تدرجات ألوان Brave البنفسجية */
+            --bg-grad-1: #18093e;
+            --bg-grad-2: #2f1766;
+            --bg-grad-3: #4b1f8c;
+            --accent: #ff5722;
+            /* شفافيات زجاجية */
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-color: #ffffff;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+        
+        body {
+            font-family: 'Inter', sans-serif; /* الخط الافتراضي (English) */
+            margin: 0; padding: 0;
+            background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 50%, var(--bg-grad-3) 100%);
+            height: 100vh;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* تفعيل الوضع العربي RTL */
+        body.rtl-active {
+            font-family: 'Cairo', sans-serif;
+            direction: rtl;
+        }
+
+        /* خطوط متموجة خفيفة جداً فوق الخلفية */
+        body::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 50px);
+            pointer-events: none; z-index: -1;
+        }
+
+        /* ============== 2. تنسيق الشعار في الخلفية ============== */
+        .background-logo {
+            position: fixed;         /* تثبيت مكانه */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* سنترته بالضبط */
+            max-width: 60%;          /* حجمه بالنسبة للشاشة */
+            opacity: 0.10;           /* شفافية عالية جداً (10%) لكي لا يزعج */
+            z-index: 0;              /* يقع خلف المحتوى */
+            pointer-events: none;    /* يمنع التفاعل معه (لكي لا يمنع النقر فوقه) */
+            filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.5)); /* ظل ذهبي خفيف */
+        }
+
+
+        /* ============== 3. شريط التنقل العلوي (اللغة) ============== */
+        .top-nav {
+            position: absolute;
+            top: 20px; right: 20px; z-index: 10;
+        }
+        /* في الوضع العربي نعكس المكان */
+        body.rtl-active .top-nav { right: auto; left: 20px; }
+
+        .lang-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: white; padding: 8px 16px; border-radius: 20px;
+            cursor: pointer; font-weight: 600; backdrop-filter: blur(5px);
+            transition: 0.3s; display: flex; align-items: center; gap: 5px;
+            font-family: inherit; z-index: 11;
+        }
+        .lang-btn:hover { background: rgba(255,255,255,0.2); }
+
+        /* ============== 4. واجهة المحادثة (CHAT) ============== */
+        .main-container {
+            position: relative; 
+            z-index: 2; /* لضمان ظهوره فوق الشعار */
+            width: 100%; max-width: 800px; margin: 0 auto;
+            height: 100vh;
+            display: flex; flex-direction: column;
+            padding-bottom: 20px; padding-top: 60px;
+        }
+
+        #chat-window {
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 15px;
+            scrollbar-width: none;
+        }
+        #chat-window::-webkit-scrollbar { display: none; }
+
+        .message {
+            max-width: 80%; padding: 12px 18px; border-radius: 18px;
+            font-size: 1rem; line-height: 1.5; position: relative;
+            animation: slideUp 0.3s ease-out forwards;
+            word-wrap: break-word;
+        }
+        
+        .message.bot {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.15); /* زيادة طفيفة للتبيين فوق الشعار */
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(90deg, #ff5722, #ff9100);
+            box-shadow: 0 4px 15px rgba(255, 87, 34, 0.3);
+            border-bottom-right-radius: 4px; color: #fff;
+        }
+
+        body.rtl-active .message.bot {
+            border-bottom-left-radius: 18px; border-bottom-right-radius: 4px;
+        }
+        body.rtl-active .message.user {
+            border-bottom-right-radius: 18px; border-bottom-left-radius: 4px;
+            background: linear-gradient(270deg, #ff5722, #ff9100);
+        }
+
+        .typing {
+            font-style: italic; color: rgba(255,255,255,0.7); font-size: 0.85rem;
+            margin: 0 20px; display: none; z-index: 2;
+        }
+
+        /* ============== 5. منطقة الإدخال ============== */
+        .input-wrapper {
+            width: 100%; padding: 0 20px;
+            display: flex; justify-content: center; margin-top: 10px;
+            z-index: 5;
+        }
+
+        .search-bar-container {
+            width: 100%; max-width: 700px;
+            background: rgba(255, 255, 255, 0.15); /* زجاجي أكثر */
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            display: flex; align-items: center; padding: 5px 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        input[type="text"] {
+            flex: 1; background: transparent; border: none;
+            color: white; font-size: 1rem; padding: 12px 10px;
+            font-family: inherit;
+        }
+        input::placeholder { color: rgba(255,255,255,0.6); }
+
+        .action-btn {
+            background: none; border: none; color: rgba(255,255,255,0.9);
+            cursor: pointer; padding: 8px 12px; border-radius: 20px;
+            font-family: inherit; font-size: 0.85rem; transition: 0.3s;
+        }
+        .action-btn:hover { color: white; background: rgba(255,255,255,0.1); }
+        .skip-btn { border: 1px solid rgba(255,255,255,0.2); }
+        .send-btn {
+            background: var(--accent); color: white;
+            border-radius: 50%; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            margin-left: 5px;
+        }
+        .send-btn:hover { transform: scale(1.05); }
+
+        body.rtl-active .skip-btn { margin-left: 10px; margin-right: 0; }
+        body.rtl-active .send-btn { margin-right: 10px; margin-left: 0; transform: rotate(180deg); }
+
+        /* ============== 6. النافذة المنبثقة للـ CV ============== */
+        #cv-modal {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); z-index: 100;
+            flex-direction: column; align-items: center; justify-content: center;
+            animation: fadeIn 0.5s; padding: 20px;
+        }
+        #cv-scroll-area {
+            overflow-y: auto; max-height: 80vh; width: 100%;
+            display: flex; justify-content: center; margin-bottom: 20px;
+        }
+        .paper-content {
+            background: white; width: 210mm; min-height: 297mm;
+            padding: 15mm; color: #333; font-family: 'Segoe UI', Arial, sans-serif;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5); font-size: 14px; transform-origin: top center;
+        }
+        .paper-content.rtl {
+            direction: rtl; text-align: right;
+            font-family: 'Cairo', 'Segoe UI', sans-serif;
+        }
+        
+        .end-controls { display: flex; gap: 15px; z-index: 101; }
+        .big-btn {
+            padding: 12px 30px; border-radius: 30px; border: none;
+            font-size: 1rem; font-weight: bold; cursor: pointer;
+            transition: transform 0.2s; font-family: inherit;
+        }
+        .btn-download { background: #28a745; color: white; box-shadow: 0 0 15px rgba(40,167,69,0.5); }
+        .btn-restart { background: #dc3545; color: white; box-shadow: 0 0 15px rgba(220,53,69,0.5); }
+        .big-btn:hover { transform: scale(1.05); }
+
+        /* تنسيقات داخلية للـ CV */
+        .paper-content h1 { text-align: center; margin: 0 0 5px 0; font-size: 2.4em; text-transform: uppercase; color: #222; }
+        .paper-content .contact { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; font-size: 0.95em;}
+        .paper-content h2 { border-bottom: 1px solid #aaa; font-size: 1.3em; margin-top: 25px; padding-bottom: 5px; text-transform: uppercase; color: #18093e; }
+        .paper-content ul { padding-left: 20px; margin-top: 5px; }
+        .paper-content.rtl ul { padding-left: 0; padding-right: 20px; }
+        .paper-content .row { display: flex; justify-content: space-between; font-weight: bold; margin-top: 15px; }
+        .paper-content .sub { font-style: italic; color: #555; font-size: 0.95em; margin-bottom: 5px; }
+
+        @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body id="body">
+
+    <!-- 1. الشعار في الخلفية -->
+    <!-- تأكد من وضع صورتك باسم logo.jpg أو غير الامتداد هنا -->
+    <img src="logo.jpg" alt="Logo" class="background-logo" onerror="this.style.display='none'">
+
+    <!-- 2. زر تبديل اللغة -->
+    <nav class="top-nav">
+        <button class="lang-btn" id="lang-btn" onclick="toggleLanguage()">
+            <span style="font-size: 1.2em;">🌐</span> 
+            <span id="lang-text">العربية</span>
+        </button>
+    </nav>
+
+    <!-- 3. الحاوية الرئيسية للتطبيق -->
+    <div class="main-container">
+        
+        <div id="chat-window">
+            <!-- المحادثة ستظهر هنا -->
+        </div>
+        
+        <div class="typing" id="typing">Thinking...</div>
+
+        <!-- حقل الإدخال العائم -->
+        <div class="input-wrapper">
+            <div class="search-bar-container">
+                <button class="action-btn skip-btn" id="skip-btn">Skip</button>
+                <input type="text" id="user-input" placeholder="Type here..." autocomplete="off">
+                <button class="action-btn send-btn" id="send-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. نافذة الـ CV النهائية -->
+    <div id="cv-modal">
+        <div id="cv-scroll-area">
+            <div id="cv-preview-content" class="paper-content">
+                <!-- الـ HTML المنتج سيكون هنا -->
+            </div>
+        </div>
+        
+        <div class="end-controls">
+            <button class="big-btn btn-restart" id="btn-restart" onclick="restartApp()">Start Again</button>
+            <button class="big-btn btn-download" id="btn-download" onclick="downloadPDF()">Download PDF</button>
+        </div>
+    </div>
+
+    <!-- 5. منطق الجافاسكربت -->
+    <script>
+        // ============== بيانات النصوص والترجمة ==============
+        const strings = {
+            en: {
+                langName: "العربية",
+                welcome: "Hello! I am your AI CV builder. Ready to create a professional resume? Let's start with your **Full Name**.",
+                jobTitle: "What is your target **Job Title**?",
+                contact: "Please provide your **Contact Info** (Phone | Email | Location) in one line.",
+                summary: "Write a short **Professional Summary** about yourself.",
+                eduTrigger: "Do you have any **Education** or degrees to list? (Yes / No)",
+                workTrigger: "Do you want to add **Work Experience**? (Yes / No)",
+                eduAnother: "Do you want to add **another** degree? (Yes / No)",
+                workAnother: "Do you want to add **another** job? (Yes / No)",
+                skills: "List your **Key Skills** separated by commas.",
+                certs: "Do you have any **Certifications**? (List them or Skip).",
+                finish: "Perfect! Generating your CV now...",
+                placeholder: "Type your answer here...",
+                skip: "Skip",
+                download: "Download PDF",
+                restart: "Start Again",
+                headers: { summ: "Summary", work: "Experience", edu: "Education", skills: "Skills", certs: "Certifications" },
+                questions: {
+                    edu: ["Degree Name?", "University/School Name?", "Graduation Year?"],
+                    work: ["Job Title?", "Company Name?", "Dates (Start - End)?", "Key Responsibilities (Hit Enter)?"]
+                }
+            },
+            ar: {
+                langName: "English",
+                welcome: "أهلاً بك! أنا مساعدك الذكي لبناء السيرة الذاتية. هل أنت مستعد؟ لنبدأ بكتابة **اسمك الثلاثي**.",
+                jobTitle: "ما هو **المسمى الوظيفي** الحالي أو المستهدف؟",
+                contact: "اكتب **بيانات التواصل** (رقم الهاتف | البريد الإلكتروني | المدينة) في سطر واحد.",
+                summary: "اكتب **ملخصاً مهنياً** قصيراً عن نفسك.",
+                eduTrigger: "هل تود إضافة **مؤهل دراسي**؟ (نعم / لا)",
+                workTrigger: "هل تود إضافة **خبرة عملية**؟ (نعم / لا)",
+                eduAnother: "هل تود إضافة مؤهل **آخر**؟ (نعم / لا)",
+                workAnother: "هل تود إضافة وظيفة **أخرى**؟ (نعم / لا)",
+                skills: "ما هي **مهاراتك** الرئيسية؟ (افصل بينها بفواصل).",
+                certs: "هل لديك **شهادات معتمدة**؟ (اكتبها أو اضغط تخطي).",
+                finish: "ممتاز! جاري تجهيز سيرتك الذاتية...",
+                placeholder: "اكتب إجابتك هنا...",
+                skip: "تخطي",
+                download: "تحميل PDF",
+                restart: "البدء مجدداً",
+                headers: { summ: "الملخص المهني", work: "الخبرات العملية", edu: "التعليم", skills: "المهارات", certs: "الشهادات والدورات" },
+                questions: {
+                    edu: ["اسم الشهادة/الدرجة العلمية؟", "اسم الجامعة أو المؤسسة؟", "سنة التخرج؟"],
+                    work: ["المسمى الوظيفي؟", "اسم الشركة؟", "الفترة الزمنية (من - إلى)؟", "أهم المسؤوليات (اضغط Enter)؟"]
+                }
+            }
+        };
+
+        let lang = 'en'; 
+        let cvData = resetData();
+        let tempWork = {}, tempEdu = {};
+        let state = { mode: 'main', mainIdx: 0, subIdx: 0 }; 
+
+        // عناصر الواجهة
+        const ui = {
+            body: document.getElementById('body'),
+            chat: document.getElementById('chat-window'),
+            input: document.getElementById('user-input'),
+            btnSend: document.getElementById('send-btn'),
+            btnSkip: document.getElementById('skip-btn'),
+            typing: document.getElementById('typing'),
+            langBtn: document.getElementById('lang-btn'),
+            langText: document.getElementById('lang-text'),
+            modal: document.getElementById('cv-modal'),
+            paper: document.getElementById('cv-preview-content'),
+            btnDL: document.getElementById('btn-download'),
+            btnRest: document.getElementById('btn-restart')
+        };
+
+        function getFlow() {
+            const txt = strings[lang];
+            return [
+                { id: 'name', text: txt.welcome, field: 'name' },
+                { id: 'title', text: txt.jobTitle, field: 'title' },
+                { id: 'contact', text: txt.contact, field: 'contact' },
+                { id: 'summ', text: txt.summary, field: 'summary' },
+                { id: 'edu_chk', text: txt.eduTrigger, type: 'yesno', mode: 'edu' },
+                { id: 'work_chk', text: txt.workTrigger, type: 'yesno', mode: 'work' },
+                { id: 'skills', text: txt.skills, field: 'skills' },
+                { id: 'certs', text: txt.certs, field: 'certs' },
+                { id: 'end', text: txt.finish, action: 'generate' }
+            ];
+        }
+
+        // --- دوال التشغيل ---
+        function toggleLanguage() {
+            lang = lang === 'en' ? 'ar' : 'en';
+            applyLanguageSettings();
+            restartApp(); 
+        }
+
+        function applyLanguageSettings() {
+            const txt = strings[lang];
+            ui.langText.innerText = txt.langName;
+            ui.input.placeholder = txt.placeholder;
+            ui.btnSkip.innerText = txt.skip;
+            ui.btnDL.innerText = txt.download;
+            ui.btnRest.innerText = txt.restart;
+
+            if (lang === 'ar') {
+                ui.body.classList.add('rtl-active');
+                ui.body.setAttribute('dir', 'rtl');
+            } else {
+                ui.body.classList.remove('rtl-active');
+                ui.body.setAttribute('dir', 'ltr');
+            }
+        }
+
+        function resetData() {
+            return { name: '', title: '', contact: '', summary: '', work: [], education: [], skills: [], certs: [] };
+        }
+
+        function restartApp() {
+            cvData = resetData();
+            state = { mode: 'main', mainIdx: 0, subIdx: 0 };
+            ui.chat.innerHTML = '';
+            ui.modal.style.display = 'none';
+            ui.paper.innerHTML = '';
+            setTimeout(processStep, 500);
+        }
+
+        async function botSpeak(msg) {
+            ui.typing.style.display = 'block';
+            ui.chat.scrollTop = ui.chat.scrollHeight;
+            await new Promise(r => setTimeout(r, 600)); 
+            ui.typing.style.display = 'none';
+            
+            const div = document.createElement('div');
+            div.className = 'message bot';
+            div.innerHTML = msg.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            ui.chat.appendChild(div);
+            ui.chat.scrollTop = ui.chat.scrollHeight;
+        }
+
+        function userSpeak(msg, skipped) {
+            const div = document.createElement('div');
+            div.className = 'message user';
+            div.innerText = skipped ? (lang==='ar'?'تم التخطي':'Skipped') : msg;
+            ui.chat.appendChild(div);
+            ui.input.value = '';
+            ui.chat.scrollTop = ui.chat.scrollHeight;
+        }
+
+        async function processStep() {
+            const flow = getFlow();
+            const txt = strings[lang];
+
+            if (state.mode === 'main') {
+                const step = flow[state.mainIdx];
+                if (step.action === 'generate') {
+                    await botSpeak(step.text);
+                    generateCV();
+                } else {
+                    await botSpeak(step.text);
+                }
+            } 
+            else if (state.mode === 'edu_loop') {
+                const qList = txt.questions.edu;
+                if (state.subIdx < qList.length) {
+                    await botSpeak(qList[state.subIdx]);
+                } else {
+                    cvData.education.push({...tempEdu}); tempEdu = {};
+                    state.mode = 'edu_chk_again'; 
+                    await botSpeak(txt.eduAnother);
+                }
+            }
+            else if (state.mode === 'work_loop') {
+                const qList = txt.questions.work;
+                if (state.subIdx < qList.length) {
+                    await botSpeak(qList[state.subIdx]);
+                } else {
+                    cvData.work.push({...tempWork}); tempWork = {};
+                    state.mode = 'work_chk_again';
+                    await botSpeak(txt.workAnother);
+                }
+            }
+        }
+
+        function handleInput(isSkip) {
+            const val = ui.input.value.trim();
+            if (!val && !isSkip) return;
+            userSpeak(val, isSkip);
+
+            const flow = getFlow();
+            if (state.mode === 'main') {
+                const step = flow[state.mainIdx];
+                if (step.type === 'yesno') {
+                    const isYes = val.toLowerCase().match(/y|yes|نعم|اه|أجل/);
+                    if (isYes) {
+                        state.mode = step.mode + '_loop'; state.subIdx = 0;
+                    } else {
+                        state.mainIdx++;
+                    }
+                } else {
+                    if (!isSkip) {
+                        if (step.field === 'skills' || step.field === 'certs') cvData[step.field] = val.split(/,|،/).map(s => s.trim());
+                        else cvData[step.field] = val;
+                    }
+                    state.mainIdx++;
+                }
+            }
+            else if (state.mode === 'edu_loop') {
+                if (!isSkip) tempEdu[['degree', 'uni', 'year'][state.subIdx]] = val;
+                state.subIdx++;
+            }
+            else if (state.mode === 'edu_chk_again') {
+                if (val.toLowerCase().match(/y|yes|نعم/)) { state.mode = 'edu_loop'; state.subIdx = 0; }
+                else { state.mode = 'main'; state.mainIdx++; }
+            }
+            else if (state.mode === 'work_loop') {
+                if (!isSkip) tempWork[['title', 'comp', 'date', 'desc'][state.subIdx]] = val;
+                state.subIdx++;
+            }
+            else if (state.mode === 'work_chk_again') {
+                if (val.toLowerCase().match(/y|yes|نعم/)) { state.mode = 'work_loop'; state.subIdx = 0; }
+                else { state.mode = 'main'; state.mainIdx++; }
+            }
+            processStep();
+        }
+
+        function generateCV() {
+            setTimeout(() => {
+                ui.modal.style.display = 'flex';
+                const labels = strings[lang].headers;
+                const rtlClass = lang === 'ar' ? 'rtl' : '';
+                const list = (arr) => arr.length ? `<ul>${arr.map(x => `<li>${x}</li>`).join('')}</ul>` : '';
+
+                const workHTML = cvData.work.map(w => `
+                    <div class="entry"><div class="row"><span>${w.title||''}</span><span>${w.date||''}</span></div>
+                    <div class="sub">${w.comp||''}</div><p>${w.desc||''}</p></div>`).join('');
+                const eduHTML = cvData.education.map(e => `
+                    <div class="entry"><div class="row"><span>${e.degree||''}</span><span>${e.year||''}</span></div>
+                    <div class="sub">${e.uni||''}</div></div>`).join('');
+
+                ui.paper.className = `paper-content ${rtlClass}`;
+                ui.paper.innerHTML = `
+                    <h1>${cvData.name}</h1>
+                    <div class="contact">${cvData.title ? `<b>${cvData.title}</b> | ` : ''}${cvData.contact}</div>
+                    ${cvData.summary ? `<h2>${labels.summ}</h2><p>${cvData.summary}</p>` : ''}
+                    ${workHTML ? `<h2>${labels.work}</h2>${workHTML}` : ''}
+                    ${eduHTML ? `<h2>${labels.edu}</h2>${eduHTML}` : ''}
+                    ${cvData.skills.length ? `<h2>${labels.skills}</h2>${list(cvData.skills)}` : ''}
+                    ${cvData.certs.length ? `<h2>${labels.certs}</h2>${list(cvData.certs)}` : ''}
+                `;
+            }, 1500);
+        }
+
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const canvas = await html2canvas(ui.paper, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const w = pdf.internal.pageSize.getWidth();
+            const h = (canvas.height * w) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, w, h);
+            pdf.save("My_CV.pdf");
+        }
+
+        ui.btnSend.onclick = () => handleInput(false);
+        ui.btnSkip.onclick = () => handleInput(true);
+        ui.input.onkeypress = (e) => { if (e.key === 'Enter') handleInput(false); };
+        window.onload = () => { applyLanguageSettings(); setTimeout(processStep, 500); };
+    </script>
+</body>
+</html>
